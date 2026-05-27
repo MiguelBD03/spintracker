@@ -229,8 +229,15 @@ body::after {
 
 .mgrid { display: grid; grid-template-columns: repeat(6,1fr); gap: 8px; margin-bottom: 10px; }
 @media(max-width:460px) { .mgrid { grid-template-columns: repeat(3,1fr); } }
-.custom-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; padding: 12px; background: var(--accdim); border: .5px solid rgba(123,104,238,.2); border-radius: 8px; }
+.custom-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; padding: 12px; background: var(--accdim); border: .5px solid rgba(123,104,238,.2); border-radius: 8px; }
 .custom-lbl { font-size: .58rem; color: rgba(123,104,238,.8); letter-spacing: .08em; grid-column: 1/-1; margin-bottom: 4px; }
+.rb-row { display: flex; align-items: center; gap: 12px; padding: 11px 14px; background: rgba(0,228,154,0.07); border: .5px solid rgba(0,228,154,.18); border-radius: 8px; margin-bottom: 14px; }
+.rb-icon { font-size: 1rem; flex-shrink: 0; }
+.rb-fields { display: flex; align-items: center; gap: 10px; flex: 1; flex-wrap: wrap; }
+.rb-label { font-size: .6rem; color: var(--green); letter-spacing: .08em; flex: 1; min-width: 140px; }
+.rb-input { background: var(--bg); border: .5px solid rgba(0,228,154,.3); border-radius: 7px; padding: 7px 10px; font-family: "JetBrains Mono", monospace; font-size: .82rem; font-weight: 700; color: var(--green); text-align: center; outline: none; width: 80px; transition: border-color .15s; }
+.rb-input:focus { border-color: var(--green); }
+.rb-saving { font-size: .7rem; font-weight: 700; color: var(--green); white-space: nowrap; }
 .mi-item { display: flex; flex-direction: column; gap: 5px; }
 .mi-lbl  { font-size: .55rem; color: var(--muted2); text-align: center; letter-spacing: .05em; }
 .mi-lbl span { display: block; font-size: .48rem; color: var(--muted); }
@@ -621,12 +628,20 @@ function renderForm() {
       <div class="fgrid">
         <div class="fg"><label class="fl">Fecha</label><input class="fi" id="f-date" type="date" value="${today}" /></div>
         <div class="fg"><label class="fl">Buy-in ($)</label>
-          <select class="fs" id="f-bi">
+          <select class="fs" id="f-bi" onchange="updPrev()">
             ${BUYINS.map(b=>`<option value="${b}" ${b===1?'selected':''}>\$${b}</option>`).join('')}
           </select>
         </div>
         <div class="fg"><label class="fl">Torneos jugados</label><input class="fi" id="f-trn" type="number" min="1" placeholder="50" oninput="updPrev()" /></div>
         <div class="fg"><label class="fl">Nota (opcional)</label><input class="fi" id="f-note" type="text" placeholder="Observaciones…" /></div>
+      </div>
+      <div class="rb-row">
+        <span class="rb-icon">♻️</span>
+        <div class="rb-fields">
+          <span class="rb-label">Torneos gratuitos por Rakeback</span>
+          <input class="rb-input" id="f-rb" type="number" min="0" value="0" placeholder="0" oninput="updPrev()" />
+          <span class="rb-saving" id="p-rb-save" style="display:none;"></span>
+        </div>
       </div>
       <p class="fl" style="margin-bottom:10px;">Torneos ganados por multiplicador</p>
       <div class="mgrid">
@@ -651,6 +666,7 @@ function renderForm() {
         <div class="prev-item"><div class="prev-v c-m" id="p-inv">$0.00</div><div class="prev-l">Invertido</div></div>
         <div class="prev-item"><div class="prev-v c-m" id="p-pri">$0.00</div><div class="prev-l">Premios</div></div>
         <div class="prev-item"><div class="prev-v c-m" id="p-net">$0.00</div><div class="prev-l">Neto</div></div>
+        <div class="prev-item"><div class="prev-v c-g" id="p-rb">$0.00</div><div class="prev-l">Ahorro RB</div></div>
         <div class="prev-item"><div class="prev-v c-m" id="p-wr">—</div><div class="prev-l">Win rate</div></div>
       </div>
       <div class="brow">
@@ -663,17 +679,22 @@ function renderForm() {
 function updPrev() {
   const bi  = parseFloat(document.getElementById('f-bi').value)||0;
   const trn = parseInt(document.getElementById('f-trn').value)||0;
+  const rb  = Math.min(parseInt(document.getElementById('f-rb')?.value)||0, trn);
   let wins=0, prizes=0;
   MULTS.forEach(m=>{ const w=parseInt(document.getElementById('f-m'+m)?.value)||0; wins+=w; prizes+=w*bi*m; });
   const cm = parseFloat(document.getElementById('f-cm')?.value)||0;
   const cc = parseInt(document.getElementById('f-cc')?.value)||0;
   if (cm>0 && cc>0) { wins+=cc; prizes+=cc*bi*cm; }
-  const inv=trn*bi, net=prizes-inv;
+  const rbSaving = rb*bi;
+  const inv = (trn - rb)*bi;
+  const net = prizes - inv;
   document.getElementById('p-inv').textContent=`$${inv.toFixed(2)}`;
   document.getElementById('p-pri').textContent=`$${prizes.toFixed(2)}`;
   const ne=document.getElementById('p-net');
   ne.textContent=`${net>=0?'+':''}$${net.toFixed(2)}`;
   ne.className=`prev-v ${net>0?'c-g':net<0?'c-r':'c-m'}`;
+  const rbEl=document.getElementById('p-rb');
+  if(rbEl){ rbEl.textContent=`+$${rbSaving.toFixed(2)}`; }
   document.getElementById('p-wr').textContent=trn>0?`${(wins/trn*100).toFixed(1)}%`:'—';
 }
 
@@ -683,6 +704,7 @@ async function addSession() {
   const trn  = parseInt(document.getElementById('f-trn').value);
   if (!date)       { toast('Ingresa una fecha','err'); return; }
   if (!trn||trn<1) { toast('Ingresa número de torneos','err'); return; }
+  const rb = Math.min(parseInt(document.getElementById('f-rb')?.value)||0, trn);
   let wins=0, prizes=0;
   const mb={};
   MULTS.forEach(m=>{ const w=parseInt(document.getElementById('f-m'+m)?.value)||0; mb[m]=w; wins+=w; prizes+=w*bi*m; });
@@ -690,9 +712,9 @@ async function addSession() {
   const cc = parseInt(document.getElementById('f-cc')?.value)||0;
   if (cm>0 && cc>0) { wins+=cc; prizes+=cc*bi*cm; }
   if (wins>trn) { toast('Wins no pueden superar torneos jugados','err'); return; }
-  const invested=trn*bi, net=prizes-invested;
+  const invested=(trn-rb)*bi, net=prizes-invested;
   const data = {
-    sessionDate:date, buyin:bi, tourneys:trn, wins, prizes, invested,
+    sessionDate:date, buyin:bi, tourneys:trn, freeRakeback:rb, wins, prizes, invested,
     netResult:net, mult2x:mb[2]||0, mult3x:mb[3]||0, mult5x:mb[5]||0,
     mult10x:mb[10]||0, mult25x:mb[25]||0, mult120x:mb[120]||0,
     multCustomMult:cm||0, multCustomCount:cc||0,
@@ -704,7 +726,7 @@ async function addSession() {
     S.sessions.push({ id:ref.id, ...data,
       mult2x:mb[2]||0,mult3x:mb[3]||0,mult5x:mb[5]||0,
       mult10x:mb[10]||0,mult25x:mb[25]||0,mult120x:mb[120]||0,
-      multCustomMult:cm||0,multCustomCount:cc||0 });
+      multCustomMult:cm||0,multCustomCount:cc||0,freeRakeback:rb });
     recalc();
     await cfgRef.update({ currentBankroll: S.currentBankroll });
     renderAll();
