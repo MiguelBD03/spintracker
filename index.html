@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spin Max-3 · Tracker</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Unbounded:wght@400;700;900&display=swap');
+
+:root {
+  --bg:       #07090d;
+  --s1:       #0c0f16;
+  --s2:       #111520;
+  --border:   rgba(255,255,255,0.055);
+  --border2:  rgba(255,255,255,0.11);
+  --text:     #dde3ee;
+  --muted:    #3d4558;
+  --muted2:   #5e6a82;
+  --green:    #00e49a;
+  --gdim:     rgba(0,228,154,0.1);
+  --red:      #ff5e5e;
+  --rdim:     rgba(255,94,94,0.1);
+  --amber:    #ffb547;
+  --adim:     rgba(255,181,71,0.1);
+  --blue:     #4db8ff;
+  --bdim:     rgba(77,184,255,0.1);
+  --acc:      #7b68ee;
+  --accdim:   rgba(123,104,238,0.12);
+  --r:        10px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  min-height: 100vh;
+  line-height: 1.5;
+}
+
+/* ── SCANLINE OVERLAY ── */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.03) 2px,
+    rgba(0,0,0,0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.wrap { max-width: 900px; margin: 0 auto; padding: 2rem 1.25rem 5rem; }
+
+/* ── HEADER ── */
+.hdr { margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.hdr-left h1 {
+  font-family: 'Unbounded', sans-serif;
+  font-size: clamp(1.3rem, 4vw, 1.9rem);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: #fff;
+  line-height: 1;
+  margin-bottom: 5px;
+}
+.hdr-left h1 em { font-style: normal; color: var(--acc); }
+.hdr-sub { font-size: .62rem; color: var(--muted2); letter-spacing: .14em; text-transform: uppercase; }
+.hdr-br {
+  font-family: 'Unbounded', sans-serif;
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: var(--green);
+  text-align: right;
+  line-height: 1;
+}
+.hdr-br small { display: block; font-size: .56rem; color: var(--muted2); letter-spacing: .12em; text-transform: uppercase; margin-top: 4px; font-family: 'JetBrains Mono', monospace; font-weight: 400; }
+
+/* ── LOADING / SETUP SCREENS ── */
+.screen { display: flex; align-items: center; justify-content: center; min-height: 80vh; }
+.spinner { width: 28px; height: 28px; border: 2px solid var(--border2); border-top-color: var(--acc); border-radius: 50%; animation: spin .65s linear infinite; margin: 0 auto 14px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.screen-msg { font-size: .65rem; color: var(--muted2); letter-spacing: .1em; text-align: center; }
+
+.setup-box {
+  background: var(--s1);
+  border: .5px solid var(--border2);
+  border-radius: 16px;
+  padding: 2.5rem 2rem;
+  width: 100%;
+  max-width: 420px;
+}
+.setup-box h2 { font-family: 'Unbounded', sans-serif; font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 6px; }
+.setup-box p  { font-size: .67rem; color: var(--muted2); margin-bottom: 1.8rem; line-height: 1.7; }
+.field { margin-bottom: 1rem; }
+.field label { display: block; font-size: .58rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted2); margin-bottom: 7px; }
+.field input {
+  width: 100%;
+  background: var(--bg);
+  border: .5px solid var(--border2);
+  border-radius: 8px;
+  padding: 11px 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .88rem;
+  color: var(--text);
+  outline: none;
+  transition: border-color .15s;
+}
+.field input:focus { border-color: var(--acc); }
+
+/* ── BUTTONS ── */
+.btn {
+  font-family: 'Unbounded', sans-serif;
+  font-weight: 700;
+  font-size: .65rem;
+  letter-spacing: .04em;
+  padding: 12px 20px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: opacity .15s, transform .1s;
+}
+.btn:hover { opacity: .85; }
+.btn:active { transform: scale(.97); }
+.btn-acc  { background: var(--acc); color: #fff; }
+.btn-full { width: 100%; margin-top: .5rem; }
+.btn-ghost { background: transparent; border: .5px solid var(--border2); color: var(--muted2); font-family: 'JetBrains Mono', monospace; font-weight: 400; font-size: .72rem; }
+.btn-ghost:hover { border-color: var(--acc); color: var(--text); }
+.btn-danger { background: var(--rdim); border: .5px solid rgba(255,94,94,.25); color: var(--red); font-family: 'JetBrains Mono', monospace; font-size: .68rem; }
+.btn-danger:hover { background: rgba(255,94,94,.2); }
+
+/* ── ALERTS ── */
+.alerts { margin-bottom: 1rem; }
+.alert {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 14px;
+  border-radius: 8px;
+  font-size: .67rem;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+.alert-g { background: var(--gdim); border: .5px solid rgba(0,228,154,.18); color: var(--green); }
+.alert-r { background: var(--rdim); border: .5px solid rgba(255,94,94,.18); color: var(--red); }
+.alert-a { background: var(--adim); border: .5px solid rgba(255,181,71,.18); color: var(--amber); }
+.alert-b { background: var(--bdim); border: .5px solid rgba(77,184,255,.18); color: var(--blue); }
+.alert-icon { font-size: .9rem; flex-shrink: 0; }
+
+/* ── KPI GRID ── */
+.kpis { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 1rem; }
+@media(max-width:580px) { .kpis { grid-template-columns: repeat(2,1fr); } }
+.kpi {
+  background: var(--s1);
+  border: .5px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px;
+}
+.kpi-v { font-family: 'Unbounded', sans-serif; font-size: 1.1rem; font-weight: 900; color: #fff; margin-bottom: 5px; line-height: 1; }
+.kpi-l { font-size: .56rem; color: var(--muted2); letter-spacing: .1em; text-transform: uppercase; }
+.kpi-v.g { color: var(--green); }
+.kpi-v.r { color: var(--red); }
+.kpi-v.a { color: var(--amber); }
+
+/* ── BR PROGRESS ── */
+.brbar {
+  background: var(--s1);
+  border: .5px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px 16px 18px;
+  margin-bottom: 1rem;
+}
+.brbar-top { display: flex; justify-content: space-between; font-size: .6rem; color: var(--muted2); margin-bottom: 10px; }
+.track { height: 8px; background: var(--bg); border-radius: 6px; position: relative; margin-bottom: 16px; }
+.fill  { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--green), #00ffbb); transition: width .5s cubic-bezier(.34,1.56,.64,1); }
+.markers { position: relative; height: 16px; }
+.mk { position: absolute; transform: translateX(-50%); font-size: .5rem; color: var(--muted); white-space: nowrap; }
+.mk.a { color: var(--amber); }
+.mk.b { color: var(--blue); }
+
+/* ── TABS ── */
+.tabs { display: flex; gap: 2px; background: var(--s1); border: .5px solid var(--border); border-radius: var(--r); padding: 3px; margin-bottom: 1.2rem; }
+.tab {
+  flex: 1;
+  font-family: 'Unbounded', sans-serif;
+  font-size: .57rem;
+  font-weight: 400;
+  padding: 8px 4px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .14s;
+  letter-spacing: .03em;
+}
+.tab.on { background: var(--acc); color: #fff; font-weight: 700; }
+
+/* ── CARDS ── */
+.card { background: var(--s1); border: .5px solid var(--border); border-radius: var(--r); padding: 18px; margin-bottom: 1rem; }
+.card-title { font-family: 'Unbounded', sans-serif; font-size: .65rem; font-weight: 700; color: var(--muted2); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 14px; }
+
+/* ── CHARTS ── */
+.chart-wrap { position: relative; height: 180px; }
+.mini-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem; }
+.mini-card { background: var(--s1); border: .5px solid var(--border); border-radius: var(--r); padding: 16px; }
+.mini-card .chart-wrap { height: 110px; }
+
+/* ── FORM ── */
+.fg { display: flex; flex-direction: column; gap: 6px; }
+.fl { font-size: .58rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted2); }
+.fi, .fs {
+  background: var(--bg);
+  border: .5px solid var(--border2);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .8rem;
+  color: var(--text);
+  outline: none;
+  transition: border-color .15s;
+  width: 100%;
+}
+.fi:focus, .fs:focus { border-color: var(--acc); }
+.fs option { background: var(--s2); }
+.fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+@media(max-width:480px) { .fgrid { grid-template-columns: 1fr; } }
+
+.mgrid { display: grid; grid-template-columns: repeat(6,1fr); gap: 8px; margin-bottom: 16px; }
+@media(max-width:460px) { .mgrid { grid-template-columns: repeat(3,1fr); } }
+.mi-item { display: flex; flex-direction: column; gap: 5px; }
+.mi-lbl  { font-size: .55rem; color: var(--muted2); text-align: center; letter-spacing: .05em; }
+.mi-lbl span { display: block; font-size: .48rem; color: var(--muted); }
+.mi-inp {
+  background: var(--bg);
+  border: .5px solid var(--border2);
+  border-radius: 7px;
+  padding: 8px 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .85rem;
+  font-weight: 700;
+  color: var(--green);
+  text-align: center;
+  outline: none;
+  transition: border-color .15s;
+  width: 100%;
+}
+.mi-inp:focus { border-color: var(--green); }
+
+.preview {
+  background: var(--bg);
+  border: .5px solid var(--border2);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.prev-item { text-align: center; }
+.prev-v { font-family: 'Unbounded', sans-serif; font-size: .9rem; font-weight: 700; }
+.prev-l { font-size: .52rem; color: var(--muted2); text-transform: uppercase; letter-spacing: .1em; margin-top: 2px; }
+.brow { display: flex; gap: 8px; }
+
+/* ── TABLE ── */
+.tbl-card { background: var(--s1); border: .5px solid var(--border); border-radius: var(--r); overflow: hidden; margin-bottom: 1rem; }
+.tbl-head, .tbl-row { display: grid; grid-template-columns: 92px 56px 48px 64px 64px 64px 44px; padding: 9px 14px; }
+.tbl-head { font-size: .52rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); border-bottom: .5px solid var(--border); }
+.tbl-row { font-size: .7rem; border-bottom: .5px solid var(--border); align-items: center; transition: background .1s; }
+.tbl-row:last-child { border-bottom: none; }
+.tbl-row:hover { background: rgba(255,255,255,.015); }
+@media(max-width:580px) {
+  .tbl-head, .tbl-row { grid-template-columns: 80px 52px 60px 64px 64px 36px; }
+  .col-trn { display: none; }
+}
+.tbl-empty { padding: 28px; text-align: center; font-size: .68rem; color: var(--muted); }
+.tag-bi { font-size: .58rem; padding: 2px 6px; border-radius: 4px; background: var(--accdim); color: var(--acc); }
+.c-g { color: var(--green); }
+.c-r { color: var(--red); }
+.c-m { color: var(--muted2); }
+.del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: .68rem; padding: 2px 5px; border-radius: 4px; transition: all .1s; }
+.del:hover { color: var(--red); background: var(--rdim); }
+
+/* ── ANALYSIS ── */
+.agrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem; }
+@media(max-width:520px) { .agrid { grid-template-columns: 1fr; } }
+.acard { background: var(--s1); border: .5px solid var(--border); border-radius: var(--r); padding: 16px; }
+.acard h3 { font-family: 'Unbounded', sans-serif; font-size: .6rem; font-weight: 700; color: var(--muted2); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 12px; }
+.sl { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: .5px solid var(--border); }
+.sl:last-child { border-bottom: none; }
+.sl-l { font-size: .65rem; color: var(--muted2); }
+.sl-v { font-size: .7rem; font-weight: 700; }
+
+.mbar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.mbar-lbl { font-size: .6rem; color: var(--muted2); width: 30px; text-align: right; flex-shrink: 0; }
+.mbar-track { flex: 1; height: 7px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+.mbar-fill  { height: 100%; border-radius: 4px; background: var(--green); transition: width .4s; }
+.mbar-cnt { font-size: .58rem; color: var(--muted2); width: 22px; text-align: right; flex-shrink: 0; }
+
+/* ── CONFIG ── */
+.sgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media(max-width:480px) { .sgrid { grid-template-columns: 1fr; } }
+.danger-z { border-top: .5px solid rgba(255,94,94,.12); padding-top: 14px; margin-top: 14px; }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed; bottom: 1.5rem; right: 1.5rem;
+  background: var(--s2); border: .5px solid var(--border2);
+  border-radius: 8px; padding: 10px 16px;
+  font-size: .68rem; color: var(--text);
+  z-index: 10000; opacity: 0; transform: translateY(8px);
+  transition: all .2s; pointer-events: none;
+}
+.toast.on { opacity: 1; transform: translateY(0); }
+.toast.ok  { border-color: rgba(0,228,154,.3); color: var(--green); }
+.toast.err { border-color: rgba(255,94,94,.3); color: var(--red); }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--s2); border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap" id="wrap">
+
+  <!-- LOADING -->
+  <div class="screen" id="scr-loading">
+    <div><div class="spinner"></div><p class="screen-msg">Conectando…</p></div>
+  </div>
+
+  <!-- SETUP -->
+  <div class="screen" id="scr-setup" style="display:none;">
+    <div class="setup-box">
+      <h2>Spin Max-3 Tracker</h2>
+      <p>Primera vez. Configura tu bankroll inicial y los triggers de nivel.</p>
+      <div class="field"><label>Bankroll inicial ($)</label><input id="s-br" type="number" step="0.01" placeholder="200.00" /></div>
+      <div class="field"><label>Trigger bajada de nivel ($)</label><input id="s-down" type="number" step="0.01" placeholder="150.00" /></div>
+      <div class="field"><label>Objetivo / subida de nivel ($)</label><input id="s-up" type="number" step="0.01" placeholder="600.00" /></div>
+      <button class="btn btn-acc btn-full" onclick="doSetup()">Iniciar →</button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main" style="display:none;">
+    <div class="hdr">
+      <div class="hdr-left">
+        <h1>Spin <em>Max-3</em></h1>
+        <div class="hdr-sub">GGPoker · Nash · Bankroll tracker</div>
+      </div>
+      <div class="hdr-br" id="hdr-br">$0.00<small>Bankroll</small></div>
+    </div>
+
+    <div class="alerts" id="alerts"></div>
+    <div class="kpis"   id="kpis"></div>
+    <div class="brbar"  id="brbar"></div>
+
+    <div class="tabs">
+      <button class="tab on"  onclick="go('dash')">Dashboard</button>
+      <button class="tab"     onclick="go('sesion')">+ Sesión</button>
+      <button class="tab"     onclick="go('historial')">Historial</button>
+      <button class="tab"     onclick="go('analisis')">Análisis</button>
+      <button class="tab"     onclick="go('config')">Config</button>
+    </div>
+
+    <div id="t-dash"></div>
+    <div id="t-sesion"   style="display:none;"></div>
+    <div id="t-historial" style="display:none;"></div>
+    <div id="t-analisis"  style="display:none;"></div>
+    <div id="t-config"    style="display:none;"></div>
+  </div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<!-- Chart.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+//  ⚠️  REEMPLAZA ESTOS VALORES CON LOS DE TU PROYECTO EN FIREBASE CONSOLE
+//  https://console.firebase.google.com → Tu proyecto → Configuración → Web app
+// ─────────────────────────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey:            "AIzaSyDKPIL4mnnD4sbwISvqXpC7gx2v_RVfEYQ",
+  authDomain:        "spintracker-4832b.firebaseapp.com",
+  projectId:         "spintracker-4832b",
+  storageBucket:     "spintracker-4832b.firebasestorage.app",
+  messagingSenderId: "784538245092",
+  appId:             "1:784538245092:web:c4c2bbd12c22bc91fe19f1",
+  measurementId:     "G-ND7KBTL6KG"
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const cfgRef      = db.collection('config').doc('tracker');
+const sessionsCol = db.collection('sessions');
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let S = { initialBankroll:0, currentBankroll:0, triggerDown:0, triggerUp:0, sessions:[] };
+const MULTS = [2,3,5,10,25,120];
+const MLBL  = ['2x','3x','5x','10x','25x','120x+'];
+const BUYINS = [0.25,1,3,5,10];
+let charts = {};
+let tab = 'dash';
+
+// ─── BOOT ────────────────────────────────────────────────────────────────────
+window.onload = async () => {
+  try {
+    const [cfgSnap, sessSnap] = await Promise.all([
+      cfgRef.get(),
+      sessionsCol.orderBy('sessionDate', 'asc').orderBy('createdAt', 'asc').get()
+    ]);
+
+    hide('scr-loading');
+
+    if (!cfgSnap.exists) {
+      show('scr-setup', 'flex');
+      return;
+    }
+
+    const cfg = cfgSnap.data();
+    S.initialBankroll = cfg.initialBankroll;
+    S.currentBankroll = cfg.currentBankroll;
+    S.triggerDown     = cfg.triggerDown;
+    S.triggerUp       = cfg.triggerUp;
+    S.sessions = sessSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    showMain();
+  } catch(e) {
+    hide('scr-loading');
+    show('scr-setup', 'flex');
+    toast('Error al conectar con Firebase. ¿Configuraste el firebaseConfig?', 'err');
+    console.error(e);
+  }
+};
+
+async function doSetup() {
+  const br   = parseFloat(document.getElementById('s-br').value);
+  const down = parseFloat(document.getElementById('s-down').value);
+  const up   = parseFloat(document.getElementById('s-up').value);
+  if (!br || br <= 0) { toast('Ingresa un bankroll válido','err'); return; }
+  const data = {
+    initialBankroll: br,
+    currentBankroll: br,
+    triggerDown: down || +(br*0.75).toFixed(2),
+    triggerUp:   up   || +(br*3).toFixed(2)
+  };
+  try {
+    await cfgRef.set(data);
+    Object.assign(S, data, { sessions:[] });
+    hide('scr-setup');
+    showMain();
+  } catch(e) { toast('Error: '+e.message,'err'); console.error(e); }
+}
+
+function showMain() { show('main'); renderAll(); }
+
+// ─── SAVE CONFIG ─────────────────────────────────────────────────────────────
+async function saveConfig(updates) {
+  Object.assign(S, updates);
+  await cfgRef.update(updates);
+}
+
+// ─── RECALC BANKROLL ─────────────────────────────────────────────────────────
+function recalc() {
+  S.currentBankroll = S.initialBankroll +
+    S.sessions.reduce((a,x) => a + x.netResult, 0);
+}
+
+// ─── RENDER ALL ──────────────────────────────────────────────────────────────
+function renderAll() {
+  document.getElementById('hdr-br').innerHTML =
+    `$${S.currentBankroll.toFixed(2)}<small>Bankroll</small>`;
+  renderAlerts();
+  renderKPIs();
+  renderBrBar();
+  renderTabContent(tab);
+}
+
+function go(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach((el,i) => {
+    el.classList.toggle('on', ['dash','sesion','historial','analisis','config'][i] === t);
+  });
+  ['dash','sesion','historial','analisis','config'].forEach(id => {
+    document.getElementById('t-'+id).style.display = id===t ? 'block' : 'none';
+  });
+  renderTabContent(t);
+}
+
+function renderTabContent(t) {
+  if      (t==='dash')     renderDash();
+  else if (t==='sesion')   renderForm();
+  else if (t==='historial') renderHistorial();
+  else if (t==='analisis') renderAnalisis();
+  else if (t==='config')   renderConfigTab();
+}
+
+// ─── ALERTS ──────────────────────────────────────────────────────────────────
+function renderAlerts() {
+  const br = S.currentBankroll, items = [];
+  if (br <= S.triggerDown)
+    items.push(`<div class="alert alert-r"><span class="alert-icon">⚠</span><span><b>TRIGGER DE BAJADA.</b> Bankroll $${br.toFixed(2)} ≤ $${S.triggerDown.toFixed(2)}. Baja de nivel ahora.</span></div>`);
+  else if (br <= S.triggerDown * 1.15)
+    items.push(`<div class="alert alert-a"><span class="alert-icon">⚡</span><span>Acercándote al trigger de bajada ($${S.triggerDown.toFixed(2)}). Bankroll: $${br.toFixed(2)}.</span></div>`);
+  if (br >= S.triggerUp)
+    items.push(`<div class="alert alert-b"><span class="alert-icon">🚀</span><span><b>OBJETIVO ALCANZADO.</b> $${br.toFixed(2)} ≥ $${S.triggerUp.toFixed(2)}. Considera subir de nivel.</span></div>`);
+  const pnl = br - S.initialBankroll;
+  if (pnl > 0 && items.length === 0)
+    items.push(`<div class="alert alert-g"><span class="alert-icon">✓</span><span>En profit: <b>+$${pnl.toFixed(2)}</b> (${(pnl/S.initialBankroll*100).toFixed(1)}% del bankroll inicial).</span></div>`);
+  document.getElementById('alerts').innerHTML = items.join('');
+}
+
+// ─── KPIs ─────────────────────────────────────────────────────────────────────
+function renderKPIs() {
+  const br = S.currentBankroll, pnl = br - S.initialBankroll;
+  const ses = S.sessions;
+  const tTrn = ses.reduce((a,x)=>a+x.tourneys,0);
+  const tW   = ses.reduce((a,x)=>a+x.wins,0);
+  const inv  = ses.reduce((a,x)=>a+x.invested,0);
+  const wr   = tTrn>0 ? tW/tTrn*100 : 0;
+  const roi  = inv>0  ? pnl/inv*100 : 0;
+  const pnlC = pnl>0?'g':pnl<0?'r':'';
+  const roiC = roi>0?'g':roi<0?'r':'';
+  const wrC  = wr>=42?'g':wr>0?'a':'';
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi"><div class="kpi-v">$${br.toFixed(2)}</div><div class="kpi-l">Bankroll</div></div>
+    <div class="kpi"><div class="kpi-v ${pnlC}">${pnl>=0?'+':''}$${pnl.toFixed(2)}</div><div class="kpi-l">P&L Total</div></div>
+    <div class="kpi"><div class="kpi-v ${roiC}">${roi>=0?'+':''}${roi.toFixed(1)}%</div><div class="kpi-l">ROI</div></div>
+    <div class="kpi"><div class="kpi-v ${wrC}">${tTrn>0?wr.toFixed(1)+'%':'—'}</div><div class="kpi-l">Win Rate</div></div>`;
+}
+
+// ─── BR BAR ───────────────────────────────────────────────────────────────────
+function renderBrBar() {
+  const br = S.currentBankroll;
+  const max = Math.max(S.triggerUp*1.05, br*1.1, 1);
+  const pct  = Math.min(100, br/max*100);
+  const dp   = S.triggerDown/max*100;
+  const up   = S.triggerUp/max*100;
+  const init = S.initialBankroll/max*100;
+  document.getElementById('brbar').innerHTML = `
+    <div class="brbar-top"><span>Bankroll actual</span><span>Objetivo $${S.triggerUp.toFixed(2)}</span></div>
+    <div class="track"><div class="fill" style="width:${pct.toFixed(1)}%"></div></div>
+    <div class="markers">
+      <span class="mk a" style="left:${dp.toFixed(1)}%">↓$${S.triggerDown.toFixed(0)}</span>
+      <span class="mk"   style="left:${init.toFixed(1)}%">·$${S.initialBankroll.toFixed(0)}</span>
+      <span class="mk b" style="left:${Math.min(95,up).toFixed(1)}%">↑$${S.triggerUp.toFixed(0)}</span>
+    </div>`;
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+function renderDash() {
+  document.getElementById('t-dash').innerHTML = `
+    <div class="card">
+      <div class="card-title">Curva de Equity</div>
+      <div class="chart-wrap"><canvas id="ch-eq"></canvas></div>
+    </div>
+    <div class="mini-charts">
+      <div class="mini-card"><div class="card-title">P&L por Sesión</div><div class="chart-wrap"><canvas id="ch-pnl"></canvas></div></div>
+      <div class="mini-card"><div class="card-title">Torneos Acumulados</div><div class="chart-wrap"><canvas id="ch-trn"></canvas></div></div>
+    </div>`;
+  setTimeout(() => { drawEq(); drawPnl(); drawTrn(); }, 50);
+}
+
+const cOpts = (ytick) => ({
+  responsive:true, maintainAspectRatio:false,
+  plugins:{legend:{display:false}},
+  scales:{
+    x:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#3d4558',font:{family:'JetBrains Mono',size:9}}},
+    y:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#3d4558',font:{family:'JetBrains Mono',size:9},...(ytick||{})}}
+  }
+});
+
+function mkChart(id, type, labels, datasets, extraOpts={}) {
+  const ctx = document.getElementById(id); if(!ctx) return;
+  if(charts[id]) charts[id].destroy();
+  const opts = cOpts(extraOpts.ytick);
+  if(extraOpts.tooltip) opts.plugins.tooltip = extraOpts.tooltip;
+  charts[id] = new Chart(ctx, {type, data:{labels,datasets}, options:opts});
+}
+
+function drawEq() {
+  let run = S.initialBankroll;
+  const data = [run, ...S.sessions.map(s=>{run+=s.netResult;return +run.toFixed(2);})];
+  const ptC  = data.map((v,i)=>i===0?'rgba(123,104,238,.8)':v>=data[i-1]?'rgba(0,228,154,.8)':'rgba(255,94,94,.8)');
+  mkChart('ch-eq','line',
+    ['Inicio',...S.sessions.map((_,i)=>`S${i+1}`)],
+    [{data,borderColor:'rgba(123,104,238,.6)',backgroundColor:'rgba(123,104,238,.04)',borderWidth:1.5,pointBackgroundColor:ptC,pointRadius:3,tension:.35,fill:true}],
+    {ytick:{callback:v=>`$${v}`},tooltip:{callbacks:{label:c=>` $${c.parsed.y.toFixed(2)}`}}}
+  );
+}
+function drawPnl() {
+  const data = S.sessions.map(s=>+s.netResult.toFixed(2));
+  mkChart('ch-pnl','bar',
+    S.sessions.map((_,i)=>`S${i+1}`),
+    [{data,backgroundColor:data.map(v=>v>=0?'rgba(0,228,154,.65)':'rgba(255,94,94,.65)'),borderRadius:3,borderSkipped:false}],
+    {ytick:{callback:v=>`$${v}`},tooltip:{callbacks:{label:c=>` ${c.parsed.y>=0?'+':''}$${c.parsed.y.toFixed(2)}`}}}
+  );
+}
+function drawTrn() {
+  let cum=0;
+  mkChart('ch-trn','line',
+    S.sessions.map((_,i)=>`S${i+1}`),
+    [{data:S.sessions.map(s=>{cum+=s.tourneys;return cum;}),borderColor:'rgba(77,184,255,.6)',backgroundColor:'rgba(77,184,255,.04)',borderWidth:1.5,pointRadius:2,fill:true,tension:.3}]
+  );
+}
+
+// ─── SESSION FORM ─────────────────────────────────────────────────────────────
+function renderForm() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('t-sesion').innerHTML = `
+    <div class="card">
+      <div class="card-title">Registrar Sesión</div>
+      <div class="fgrid">
+        <div class="fg"><label class="fl">Fecha</label><input class="fi" id="f-date" type="date" value="${today}" /></div>
+        <div class="fg"><label class="fl">Buy-in ($)</label>
+          <select class="fs" id="f-bi">
+            ${BUYINS.map(b=>`<option value="${b}" ${b===1?'selected':''}>\$${b}</option>`).join('')}
+          </select>
+        </div>
+        <div class="fg"><label class="fl">Torneos jugados</label><input class="fi" id="f-trn" type="number" min="1" placeholder="50" oninput="updPrev()" /></div>
+        <div class="fg"><label class="fl">Nota (opcional)</label><input class="fi" id="f-note" type="text" placeholder="Observaciones…" /></div>
+      </div>
+      <p class="fl" style="margin-bottom:10px;">Torneos ganados por multiplicador</p>
+      <div class="mgrid">
+        ${MULTS.map((m,i)=>`
+          <div class="mi-item">
+            <div class="mi-lbl">${MLBL[i]}<span>${m}× BI</span></div>
+            <input class="mi-inp" id="f-m${m}" type="number" min="0" value="0" oninput="updPrev()" />
+          </div>`).join('')}
+      </div>
+      <div class="preview">
+        <div class="prev-item"><div class="prev-v c-m" id="p-inv">$0.00</div><div class="prev-l">Invertido</div></div>
+        <div class="prev-item"><div class="prev-v c-m" id="p-pri">$0.00</div><div class="prev-l">Premios</div></div>
+        <div class="prev-item"><div class="prev-v c-m" id="p-net">$0.00</div><div class="prev-l">Neto</div></div>
+        <div class="prev-item"><div class="prev-v c-m" id="p-wr">—</div><div class="prev-l">Win rate</div></div>
+      </div>
+      <div class="brow">
+        <button class="btn btn-acc" style="flex:1;" onclick="addSession()">Guardar sesión</button>
+        <button class="btn btn-ghost" onclick="renderForm()">Limpiar</button>
+      </div>
+    </div>`;
+}
+
+function updPrev() {
+  const bi  = parseFloat(document.getElementById('f-bi').value)||0;
+  const trn = parseInt(document.getElementById('f-trn').value)||0;
+  let wins=0, prizes=0;
+  MULTS.forEach(m=>{ const w=parseInt(document.getElementById('f-m'+m)?.value)||0; wins+=w; prizes+=w*bi*m; });
+  const inv=trn*bi, net=prizes-inv;
+  document.getElementById('p-inv').textContent=`$${inv.toFixed(2)}`;
+  document.getElementById('p-pri').textContent=`$${prizes.toFixed(2)}`;
+  const ne=document.getElementById('p-net');
+  ne.textContent=`${net>=0?'+':''}$${net.toFixed(2)}`;
+  ne.className=`prev-v ${net>0?'c-g':net<0?'c-r':'c-m'}`;
+  document.getElementById('p-wr').textContent=trn>0?`${(wins/trn*100).toFixed(1)}%`:'—';
+}
+
+async function addSession() {
+  const date = document.getElementById('f-date').value;
+  const bi   = parseFloat(document.getElementById('f-bi').value);
+  const trn  = parseInt(document.getElementById('f-trn').value);
+  if (!date)       { toast('Ingresa una fecha','err'); return; }
+  if (!trn||trn<1) { toast('Ingresa número de torneos','err'); return; }
+  let wins=0, prizes=0;
+  const mb={};
+  MULTS.forEach(m=>{ const w=parseInt(document.getElementById('f-m'+m)?.value)||0; mb[m]=w; wins+=w; prizes+=w*bi*m; });
+  if (wins>trn) { toast('Wins no pueden superar torneos jugados','err'); return; }
+  const invested=trn*bi, net=prizes-invested;
+  const data = {
+    sessionDate:date, buyin:bi, tourneys:trn, wins, prizes, invested,
+    netResult:net, mult2x:mb[2]||0, mult3x:mb[3]||0, mult5x:mb[5]||0,
+    mult10x:mb[10]||0, mult25x:mb[25]||0, mult120x:mb[120]||0,
+    note:document.getElementById('f-note').value||'',
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  try {
+    const ref = await sessionsCol.add(data);
+    S.sessions.push({ id:ref.id, ...data,
+      mult2x:mb[2]||0,mult3x:mb[3]||0,mult5x:mb[5]||0,
+      mult10x:mb[10]||0,mult25x:mb[25]||0,mult120x:mb[120]||0 });
+    recalc();
+    await cfgRef.update({ currentBankroll: S.currentBankroll });
+    renderAll();
+    go('dash');
+    toast('Sesión guardada','ok');
+  } catch(e) { toast('Error: '+e.message,'err'); console.error(e); }
+}
+
+// ─── HISTORIAL ────────────────────────────────────────────────────────────────
+function renderHistorial() {
+  const el = document.getElementById('t-historial');
+  if (!S.sessions.length) {
+    el.innerHTML=`<div class="tbl-card"><div class="tbl-empty">Sin sesiones registradas.</div></div>`; return;
+  }
+  const rows = [...S.sessions].reverse().map((s,ri) => {
+    const fwdIdx = S.sessions.length-1-ri;
+    let run=S.initialBankroll;
+    for(let i=0;i<=fwdIdx;i++) run+=S.sessions[i].netResult;
+    const cls=s.netResult>0?'c-g':s.netResult<0?'c-r':'c-m';
+    return `<div class="tbl-row">
+      <span>${s.sessionDate}</span>
+      <span><span class="tag-bi">$${s.buyin}</span></span>
+      <span class="col-trn">${s.tourneys}</span>
+      <span>${(s.wins/s.tourneys*100).toFixed(0)}%</span>
+      <span class="${cls}">${s.netResult>=0?'+':''}$${s.netResult.toFixed(2)}</span>
+      <span class="c-m">$${run.toFixed(2)}</span>
+      <span><button class="del" onclick="delSession(${fwdIdx})">✕</button></span>
+    </div>`;
+  }).join('');
+  el.innerHTML=`
+    <div class="tbl-card">
+      <div class="tbl-head"><span>Fecha</span><span>BI</span><span class="col-trn">Trn</span><span>WR%</span><span>Neto</span><span>BK</span><span></span></div>
+      ${rows}
+    </div>`;
+}
+
+async function delSession(idx) {
+  const s = S.sessions[idx];
+  if (!confirm(`¿Eliminar sesión del ${s.sessionDate}?`)) return;
+  try {
+    await sessionsCol.doc(s.id).delete();
+    S.sessions.splice(idx,1);
+    recalc();
+    await cfgRef.update({ currentBankroll: S.currentBankroll });
+    renderAll();
+    toast('Sesión eliminada','ok');
+  } catch(e) { toast('Error: '+e.message,'err'); console.error(e); }
+}
+
+// ─── ANÁLISIS ─────────────────────────────────────────────────────────────────
+function renderAnalisis() {
+  const el=document.getElementById('t-analisis');
+  const ses=S.sessions;
+  if(!ses.length){ el.innerHTML=`<div class="tbl-card"><div class="tbl-empty">Registra sesiones para ver análisis.</div></div>`; return; }
+  const tTrn=ses.reduce((a,x)=>a+x.tourneys,0);
+  const tW  =ses.reduce((a,x)=>a+x.wins,0);
+  const inv =ses.reduce((a,x)=>a+x.invested,0);
+  const pnl =S.currentBankroll-S.initialBankroll;
+  const roi =inv>0?pnl/inv*100:0;
+  const wr  =tTrn>0?tW/tTrn*100:0;
+  const p1t =tTrn>0?pnl/tTrn:0;
+  const sorted=[...ses].sort((a,b)=>b.netResult-a.netResult);
+  const wS=ses.filter(x=>x.netResult>0).length;
+  const lS=ses.filter(x=>x.netResult<0).length;
+  const mt={};
+  MULTS.forEach(m=>{ mt[m]=ses.reduce((a,x)=>a+(x[`mult${m}x`]||0),0); });
+  const maxM=Math.max(1,...Object.values(mt));
+  let tW2=0,tL2=0;
+  ses.forEach(x=>{ if(x.netResult>0){tW2++;tL2=0;}else{tL2++;tW2=0;} });
+  const cur=ses[ses.length-1].netResult>0?tW2:-tL2;
+  const gv=(v,inv)=>`class="sl-v ${v>=inv?'c-g':'c-r'}"`;
+
+  el.innerHTML=`
+    <div class="agrid">
+      <div class="acard">
+        <h3>Rendimiento</h3>
+        <div class="sl"><span class="sl-l">ROI</span><span ${gv(roi,0)}>${roi>=0?'+':''}${roi.toFixed(2)}%</span></div>
+        <div class="sl"><span class="sl-l">Win rate</span><span ${gv(wr,42)}>${wr.toFixed(1)}%</span></div>
+        <div class="sl"><span class="sl-l">$/torneo</span><span ${gv(p1t,0)}>${p1t>=0?'+':''}$${p1t.toFixed(3)}</span></div>
+        <div class="sl"><span class="sl-l">Torneos totales</span><span class="sl-v">${tTrn}</span></div>
+        <div class="sl"><span class="sl-l">Prom. por sesión</span><span class="sl-v">${(tTrn/ses.length).toFixed(0)} trn</span></div>
+      </div>
+      <div class="acard">
+        <h3>Sesiones</h3>
+        <div class="sl"><span class="sl-l">Total</span><span class="sl-v">${ses.length}</span></div>
+        <div class="sl"><span class="sl-l">Ganadoras</span><span class="sl-v c-g">${wS} (${(wS/ses.length*100).toFixed(0)}%)</span></div>
+        <div class="sl"><span class="sl-l">Perdedoras</span><span class="sl-v c-r">${lS} (${(lS/ses.length*100).toFixed(0)}%)</span></div>
+        <div class="sl"><span class="sl-l">Mejor sesión</span><span class="sl-v c-g">+$${sorted[0].netResult.toFixed(2)}</span></div>
+        <div class="sl"><span class="sl-l">Peor sesión</span><span class="sl-v c-r">$${sorted[sorted.length-1].netResult.toFixed(2)}</span></div>
+        <div class="sl"><span class="sl-l">Racha actual</span><span class="sl-v ${cur>0?'c-g':cur<0?'c-r':''}"> ${cur>0?'+'+cur+' ✓':cur+' ✗'}</span></div>
+      </div>
+    </div>
+    <div class="acard" style="margin-bottom:1rem;">
+      <h3>Distribución de Multiplicadores</h3>
+      <div style="margin-top:10px;">
+        ${MULTS.map((m,i)=>`
+          <div class="mbar-row">
+            <span class="mbar-lbl">${MLBL[i]}</span>
+            <div class="mbar-track"><div class="mbar-fill" style="width:${(mt[m]/maxM*100).toFixed(0)}%"></div></div>
+            <span class="mbar-cnt">${mt[m]}</span>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="acard">
+      <h3>Break-even Nash (referencia)</h3>
+      <div class="sl"><span class="sl-l">Win rate mínimo BE</span><span class="sl-v" style="color:var(--amber)">~42%</span></div>
+      <div class="sl"><span class="sl-l">Tu win rate</span><span ${gv(wr,42)}>${wr.toFixed(1)}%</span></div>
+      <div class="sl"><span class="sl-l">Diferencia vs BE</span><span ${gv(wr-42,0)}>${(wr-42)>=0?'+':''}${(wr-42).toFixed(1)} pp</span></div>
+      <div class="sl"><span class="sl-l">Distribución 2x esperada</span><span class="sl-v">~62.7%</span></div>
+    </div>`;
+}
+
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+function renderConfigTab() {
+  document.getElementById('t-config').innerHTML=`
+    <div class="card">
+      <div class="card-title">Parámetros</div>
+      <div class="sgrid">
+        <div class="fg"><label class="fl">Trigger bajada ($)</label><input class="fi" id="c-down" type="number" step="0.01" value="${S.triggerDown}" /></div>
+        <div class="fg"><label class="fl">Objetivo subida ($)</label><input class="fi" id="c-up" type="number" step="0.01" value="${S.triggerUp}" /></div>
+        <div class="fg"><label class="fl">Bankroll actual ($)</label><input class="fi" id="c-br" type="number" step="0.01" value="${S.currentBankroll}" /></div>
+        <div class="fg"><label class="fl">Bankroll inicial ($)</label><input class="fi" id="c-ibr" type="number" step="0.01" value="${S.initialBankroll}" /></div>
+      </div>
+      <div style="margin-top:14px;"><button class="btn btn-acc" onclick="saveCfg()">Guardar cambios</button></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Estado</div>
+      <div class="sl"><span class="sl-l">Sesiones registradas</span><span class="sl-v">${S.sessions.length}</span></div>
+      <div class="sl"><span class="sl-l">Torneos totales</span><span class="sl-v">${S.sessions.reduce((a,x)=>a+x.tourneys,0)}</span></div>
+      <div class="sl"><span class="sl-l">Bankroll inicial</span><span class="sl-v">$${S.initialBankroll.toFixed(2)}</span></div>
+      <div class="danger-z">
+        <p style="font-size:.6rem;color:var(--muted2);margin-bottom:10px;">Acción irreversible</p>
+        <button class="btn btn-danger" onclick="doReset()">Reiniciar todo</button>
+      </div>
+    </div>`;
+}
+
+async function saveCfg() {
+  const down=parseFloat(document.getElementById('c-down').value);
+  const up  =parseFloat(document.getElementById('c-up').value);
+  const br  =parseFloat(document.getElementById('c-br').value);
+  const ibr =parseFloat(document.getElementById('c-ibr').value);
+  if (!down||!up||!br||!ibr) { toast('Todos los campos son requeridos','err'); return; }
+  try {
+    await saveConfig({ triggerDown:down, triggerUp:up, currentBankroll:br, initialBankroll:ibr });
+    renderAll();
+    toast('Configuración guardada','ok');
+  } catch(e) { toast('Error: '+e.message,'err'); }
+}
+
+async function doReset() {
+  if (!confirm('¿Reiniciar el tracker? Se borrarán TODAS las sesiones.')) return;
+  try {
+    const snap = await sessionsCol.get();
+    const batch = db.batch();
+    snap.docs.forEach(d => batch.delete(d.ref));
+    batch.delete(cfgRef);
+    await batch.commit();
+    location.reload();
+  } catch(e) { toast('Error: '+e.message,'err'); }
+}
+
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+function hide(id) { document.getElementById(id).style.display='none'; }
+function show(id, d='block') { document.getElementById(id).style.display=d; }
+
+let toastT;
+function toast(msg, type='') {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className=`toast on ${type}`;
+  clearTimeout(toastT);
+  toastT=setTimeout(()=>el.className='toast', 2800);
+}
+</script>
+</body>
+</html>
