@@ -414,7 +414,7 @@ window.onload = async () => {
   try {
     const [cfgSnap, sessSnap] = await Promise.all([
       cfgRef.get(),
-      sessionsCol.orderBy('sessionDate', 'asc').orderBy('createdAt', 'asc').get()
+      sessionsCol.orderBy('sessionDate', 'asc').get()
     ]);
 
     hide('scr-loading');
