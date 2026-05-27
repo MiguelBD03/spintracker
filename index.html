@@ -227,8 +227,10 @@ body::after {
 .fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
 @media(max-width:480px) { .fgrid { grid-template-columns: 1fr; } }
 
-.mgrid { display: grid; grid-template-columns: repeat(6,1fr); gap: 8px; margin-bottom: 16px; }
+.mgrid { display: grid; grid-template-columns: repeat(6,1fr); gap: 8px; margin-bottom: 10px; }
 @media(max-width:460px) { .mgrid { grid-template-columns: repeat(3,1fr); } }
+.custom-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; padding: 12px; background: var(--accdim); border: .5px solid rgba(123,104,238,.2); border-radius: 8px; }
+.custom-lbl { font-size: .58rem; color: rgba(123,104,238,.8); letter-spacing: .08em; grid-column: 1/-1; margin-bottom: 4px; }
 .mi-item { display: flex; flex-direction: column; gap: 5px; }
 .mi-lbl  { font-size: .55rem; color: var(--muted2); text-align: center; letter-spacing: .05em; }
 .mi-lbl span { display: block; font-size: .48rem; color: var(--muted); }
@@ -634,6 +636,17 @@ function renderForm() {
             <input class="mi-inp" id="f-m${m}" type="number" min="0" value="0" oninput="updPrev()" />
           </div>`).join('')}
       </div>
+      <div class="custom-row">
+        <span class="custom-lbl">✦ Multiplicador personalizado (ej. 50x, 200x)</span>
+        <div class="fg">
+          <label class="fl">Multiplicador (×)</label>
+          <input class="fi" id="f-cm" type="number" min="1" placeholder="ej. 50" oninput="updPrev()" style="color:var(--acc);" />
+        </div>
+        <div class="fg">
+          <label class="fl">Torneos ganados</label>
+          <input class="mi-inp" id="f-cc" type="number" min="0" value="0" oninput="updPrev()" style="color:var(--acc);" />
+        </div>
+      </div>
       <div class="preview">
         <div class="prev-item"><div class="prev-v c-m" id="p-inv">$0.00</div><div class="prev-l">Invertido</div></div>
         <div class="prev-item"><div class="prev-v c-m" id="p-pri">$0.00</div><div class="prev-l">Premios</div></div>
@@ -652,6 +665,9 @@ function updPrev() {
   const trn = parseInt(document.getElementById('f-trn').value)||0;
   let wins=0, prizes=0;
   MULTS.forEach(m=>{ const w=parseInt(document.getElementById('f-m'+m)?.value)||0; wins+=w; prizes+=w*bi*m; });
+  const cm = parseFloat(document.getElementById('f-cm')?.value)||0;
+  const cc = parseInt(document.getElementById('f-cc')?.value)||0;
+  if (cm>0 && cc>0) { wins+=cc; prizes+=cc*bi*cm; }
   const inv=trn*bi, net=prizes-inv;
   document.getElementById('p-inv').textContent=`$${inv.toFixed(2)}`;
   document.getElementById('p-pri').textContent=`$${prizes.toFixed(2)}`;
@@ -670,12 +686,16 @@ async function addSession() {
   let wins=0, prizes=0;
   const mb={};
   MULTS.forEach(m=>{ const w=parseInt(document.getElementById('f-m'+m)?.value)||0; mb[m]=w; wins+=w; prizes+=w*bi*m; });
+  const cm = parseFloat(document.getElementById('f-cm')?.value)||0;
+  const cc = parseInt(document.getElementById('f-cc')?.value)||0;
+  if (cm>0 && cc>0) { wins+=cc; prizes+=cc*bi*cm; }
   if (wins>trn) { toast('Wins no pueden superar torneos jugados','err'); return; }
   const invested=trn*bi, net=prizes-invested;
   const data = {
     sessionDate:date, buyin:bi, tourneys:trn, wins, prizes, invested,
     netResult:net, mult2x:mb[2]||0, mult3x:mb[3]||0, mult5x:mb[5]||0,
     mult10x:mb[10]||0, mult25x:mb[25]||0, mult120x:mb[120]||0,
+    multCustomMult:cm||0, multCustomCount:cc||0,
     note:document.getElementById('f-note').value||'',
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   };
@@ -683,7 +703,8 @@ async function addSession() {
     const ref = await sessionsCol.add(data);
     S.sessions.push({ id:ref.id, ...data,
       mult2x:mb[2]||0,mult3x:mb[3]||0,mult5x:mb[5]||0,
-      mult10x:mb[10]||0,mult25x:mb[25]||0,mult120x:mb[120]||0 });
+      mult10x:mb[10]||0,mult25x:mb[25]||0,mult120x:mb[120]||0,
+      multCustomMult:cm||0,multCustomCount:cc||0 });
     recalc();
     await cfgRef.update({ currentBankroll: S.currentBankroll });
     renderAll();
@@ -750,7 +771,11 @@ function renderAnalisis() {
   const lS=ses.filter(x=>x.netResult<0).length;
   const mt={};
   MULTS.forEach(m=>{ mt[m]=ses.reduce((a,x)=>a+(x[`mult${m}x`]||0),0); });
-  const maxM=Math.max(1,...Object.values(mt));
+  // Aggregate custom multipliers - group by mult value
+  const customMults={};
+  ses.forEach(x=>{ if(x.multCustomMult>0 && x.multCustomCount>0){ const k=x.multCustomMult; customMults[k]=(customMults[k]||0)+x.multCustomCount; } });
+  const allMtVals = [...Object.values(mt), ...Object.values(customMults)];
+  const maxM=Math.max(1,...allMtVals);
   let tW2=0,tL2=0;
   ses.forEach(x=>{ if(x.netResult>0){tW2++;tL2=0;}else{tL2++;tW2=0;} });
   const cur=ses[ses.length-1].netResult>0?tW2:-tL2;
@@ -784,6 +809,12 @@ function renderAnalisis() {
             <span class="mbar-lbl">${MLBL[i]}</span>
             <div class="mbar-track"><div class="mbar-fill" style="width:${(mt[m]/maxM*100).toFixed(0)}%"></div></div>
             <span class="mbar-cnt">${mt[m]}</span>
+          </div>`).join('')}
+        ${Object.entries(customMults).sort((a,b)=>+a[0]-+b[0]).map(([m,cnt])=>`
+          <div class="mbar-row">
+            <span class="mbar-lbl" style="color:var(--acc)">${m}x✦</span>
+            <div class="mbar-track"><div class="mbar-fill" style="width:${(cnt/maxM*100).toFixed(0)}%;background:var(--acc)"></div></div>
+            <span class="mbar-cnt" style="color:var(--acc)">${cnt}</span>
           </div>`).join('')}
       </div>
     </div>
