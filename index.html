@@ -238,6 +238,16 @@ body::after {
 .rb-input { background: var(--bg); border: .5px solid rgba(0,228,154,.3); border-radius: 7px; padding: 7px 10px; font-family: "JetBrains Mono", monospace; font-size: .82rem; font-weight: 700; color: var(--green); text-align: center; outline: none; width: 80px; transition: border-color .15s; }
 .rb-input:focus { border-color: var(--green); }
 .rb-saving { font-size: .7rem; font-weight: 700; color: var(--green); white-space: nowrap; }
+.add-cm-btn { background: var(--accdim); border: .5px solid rgba(123,104,238,.3); border-radius: 7px; padding: 6px 12px; font-family: "JetBrains Mono", monospace; font-size: .7rem; color: var(--acc); cursor: pointer; transition: all .14s; margin-top: 6px; }
+.add-cm-btn:hover { background: rgba(123,104,238,.2); }
+.cm-line { display: grid; grid-template-columns: 1fr 1fr 28px; gap: 8px; margin-bottom: 8px; align-items: end; }
+.cm-del { background: none; border: .5px solid var(--border2); border-radius: 6px; padding: 0; width: 28px; height: 38px; color: var(--muted); cursor: pointer; font-size: .8rem; transition: all .12s; }
+.cm-del:hover { color: var(--red); border-color: rgba(255,94,94,.3); background: var(--rdim); }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(4px); }
+.modal-box { background: var(--s1); border: .5px solid var(--border2); border-radius: 16px; padding: 1.5rem; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; }
+.modal-title { font-family: "Unbounded", sans-serif; font-size: .8rem; font-weight: 700; color: #fff; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+.modal-close { background: none; border: none; color: var(--muted2); font-size: 1.1rem; cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: color .12s; }
+.modal-close:hover { color: var(--red); }
 .mi-item { display: flex; flex-direction: column; gap: 5px; }
 .mi-lbl  { font-size: .55rem; color: var(--muted2); text-align: center; letter-spacing: .05em; }
 .mi-lbl span { display: block; font-size: .48rem; color: var(--muted); }
@@ -275,13 +285,13 @@ body::after {
 
 /* ── TABLE ── */
 .tbl-card { background: var(--s1); border: .5px solid var(--border); border-radius: var(--r); overflow: hidden; margin-bottom: 1rem; }
-.tbl-head, .tbl-row { display: grid; grid-template-columns: 92px 56px 48px 64px 64px 64px 44px; padding: 9px 14px; }
+.tbl-head, .tbl-row { display: grid; grid-template-columns: 92px 56px 48px 64px 64px 64px 70px; padding: 9px 14px; }
 .tbl-head { font-size: .52rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); border-bottom: .5px solid var(--border); }
 .tbl-row { font-size: .7rem; border-bottom: .5px solid var(--border); align-items: center; transition: background .1s; }
 .tbl-row:last-child { border-bottom: none; }
 .tbl-row:hover { background: rgba(255,255,255,.015); }
 @media(max-width:580px) {
-  .tbl-head, .tbl-row { grid-template-columns: 80px 52px 60px 64px 64px 36px; }
+  .tbl-head, .tbl-row { grid-template-columns: 80px 52px 60px 64px 64px 56px; }
   .col-trn { display: none; }
 }
 .tbl-empty { padding: 28px; text-align: center; font-size: .68rem; color: var(--muted); }
@@ -652,15 +662,9 @@ function renderForm() {
           </div>`).join('')}
       </div>
       <div class="custom-row">
-        <span class="custom-lbl">✦ Multiplicador personalizado (ej. 50x, 200x)</span>
-        <div class="fg">
-          <label class="fl">Multiplicador (×)</label>
-          <input class="fi" id="f-cm" type="number" min="1" placeholder="ej. 50" oninput="updPrev()" style="color:var(--acc);" />
-        </div>
-        <div class="fg">
-          <label class="fl">Torneos ganados</label>
-          <input class="mi-inp" id="f-cc" type="number" min="0" value="0" oninput="updPrev()" style="color:var(--acc);" />
-        </div>
+        <span class="custom-lbl">✦ Multiplicadores personalizados</span>
+        <div id="cm-list"></div>
+        <button class="add-cm-btn" onclick="addCmLine()">+ Agregar multiplicador</button>
       </div>
       <div class="preview">
         <div class="prev-item"><div class="prev-v c-m" id="p-inv">$0.00</div><div class="prev-l">Invertido</div></div>
@@ -676,15 +680,37 @@ function renderForm() {
     </div>`;
 }
 
+let cmCounter = 0;
+function addCmLine(mult='', count=0) {
+  const id = ++cmCounter;
+  const div = document.createElement('div');
+  div.className = 'cm-line';
+  div.id = 'cm-'+id;
+  div.innerHTML = `
+    <div class="fg"><label class="fl">Multiplicador (×)</label>
+      <input class="fi" id="cm-m-${id}" type="number" min="1" placeholder="ej. 50" value="${mult||''}" oninput="updPrev()" style="color:var(--acc);" /></div>
+    <div class="fg"><label class="fl">Ganados</label>
+      <input class="mi-inp" id="cm-c-${id}" type="number" min="0" value="${count||0}" oninput="updPrev()" style="color:var(--acc);" /></div>
+    <button class="cm-del" onclick="document.getElementById('cm-${id}').remove();updPrev()">✕</button>`;
+  document.getElementById('cm-list').appendChild(div);
+}
+function getCmLines() {
+  const lines=[];
+  document.querySelectorAll('[id^="cm-m-"]').forEach(el=>{
+    const id=el.id.replace('cm-m-','');
+    const m=parseFloat(el.value)||0;
+    const cnt=parseInt(document.getElementById('cm-c-'+id)?.value)||0;
+    if(m>0&&cnt>0) lines.push({m,cnt});
+  });
+  return lines;
+}
 function updPrev() {
   const bi  = parseFloat(document.getElementById('f-bi').value)||0;
   const trn = parseInt(document.getElementById('f-trn').value)||0;
   const rb  = Math.min(parseInt(document.getElementById('f-rb')?.value)||0, trn);
   let wins=0, prizes=0;
   MULTS.forEach(m=>{ const w=parseInt(document.getElementById('f-m'+m)?.value)||0; wins+=w; prizes+=w*bi*m; });
-  const cm = parseFloat(document.getElementById('f-cm')?.value)||0;
-  const cc = parseInt(document.getElementById('f-cc')?.value)||0;
-  if (cm>0 && cc>0) { wins+=cc; prizes+=cc*bi*cm; }
+  getCmLines().forEach(({m,cnt})=>{ wins+=cnt; prizes+=cnt*bi*m; });
   const rbSaving = rb*bi;
   const inv = (trn - rb)*bi;
   const net = prizes - inv;
@@ -698,39 +724,39 @@ function updPrev() {
   document.getElementById('p-wr').textContent=trn>0?`${(wins/trn*100).toFixed(1)}%`:'—';
 }
 
-async function addSession() {
+function collectFormData() {
   const date = document.getElementById('f-date').value;
   const bi   = parseFloat(document.getElementById('f-bi').value);
   const trn  = parseInt(document.getElementById('f-trn').value);
-  if (!date)       { toast('Ingresa una fecha','err'); return; }
-  if (!trn||trn<1) { toast('Ingresa número de torneos','err'); return; }
-  const rb = Math.min(parseInt(document.getElementById('f-rb')?.value)||0, trn);
+  const rb   = Math.min(parseInt(document.getElementById('f-rb')?.value)||0, trn||0);
+  const note = document.getElementById('f-note').value||'';
   let wins=0, prizes=0;
   const mb={};
   MULTS.forEach(m=>{ const w=parseInt(document.getElementById('f-m'+m)?.value)||0; mb[m]=w; wins+=w; prizes+=w*bi*m; });
-  const cm = parseFloat(document.getElementById('f-cm')?.value)||0;
-  const cc = parseInt(document.getElementById('f-cc')?.value)||0;
-  if (cm>0 && cc>0) { wins+=cc; prizes+=cc*bi*cm; }
-  if (wins>trn) { toast('Wins no pueden superar torneos jugados','err'); return; }
+  const customMults = getCmLines();
+  customMults.forEach(({m,cnt})=>{ wins+=cnt; prizes+=cnt*bi*m; });
   const invested=(trn-rb)*bi, net=prizes-invested;
+  return { date, bi, trn, rb, note, mb, customMults, wins, prizes, invested, net };
+}
+
+async function addSession() {
+  const { date,bi,trn,rb,note,mb,customMults,wins,prizes,invested,net } = collectFormData();
+  if (!date)       { toast('Ingresa una fecha','err'); return; }
+  if (!trn||trn<1) { toast('Ingresa número de torneos','err'); return; }
+  if (wins>trn) { toast('Wins no pueden superar torneos jugados','err'); return; }
   const data = {
     sessionDate:date, buyin:bi, tourneys:trn, freeRakeback:rb, wins, prizes, invested,
     netResult:net, mult2x:mb[2]||0, mult3x:mb[3]||0, mult5x:mb[5]||0,
     mult10x:mb[10]||0, mult25x:mb[25]||0, mult120x:mb[120]||0,
-    multCustomMult:cm||0, multCustomCount:cc||0,
-    note:document.getElementById('f-note').value||'',
+    customMults, note,
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   };
   try {
     const ref = await sessionsCol.add(data);
-    S.sessions.push({ id:ref.id, ...data,
-      mult2x:mb[2]||0,mult3x:mb[3]||0,mult5x:mb[5]||0,
-      mult10x:mb[10]||0,mult25x:mb[25]||0,mult120x:mb[120]||0,
-      multCustomMult:cm||0,multCustomCount:cc||0,freeRakeback:rb });
+    S.sessions.push({ id:ref.id, ...data });
     recalc();
     await cfgRef.update({ currentBankroll: S.currentBankroll });
-    renderAll();
-    go('dash');
+    renderAll(); go('dash');
     toast('Sesión guardada','ok');
   } catch(e) { toast('Error: '+e.message,'err'); console.error(e); }
 }
@@ -753,7 +779,10 @@ function renderHistorial() {
       <span>${(s.wins/s.tourneys*100).toFixed(0)}%</span>
       <span class="${cls}">${s.netResult>=0?'+':''}$${s.netResult.toFixed(2)}</span>
       <span class="c-m">$${run.toFixed(2)}</span>
-      <span><button class="del" onclick="delSession(${fwdIdx})">✕</button></span>
+      <span style="display:flex;gap:4px;">
+        <button class="del" style="color:var(--blue);font-size:.75rem;" onclick="editSession(${fwdIdx})" title="Editar">✎</button>
+        <button class="del" onclick="delSession(${fwdIdx})" title="Eliminar">✕</button>
+      </span>
     </div>`;
   }).join('');
   el.innerHTML=`
@@ -776,6 +805,133 @@ async function delSession(idx) {
   } catch(e) { toast('Error: '+e.message,'err'); console.error(e); }
 }
 
+// ─── EDIT SESSION ────────────────────────────────────────────────────────────
+function editSession(idx) {
+  const s = S.sessions[idx];
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'edit-modal';
+  const customLines = (s.customMults||[]).map(({m,cnt})=>`
+    <div class="cm-line" id="cm-${++cmCounter}">
+      <div class="fg"><label class="fl">Multiplicador (×)</label>
+        <input class="fi" id="cm-m-${cmCounter}" type="number" min="1" value="${m}" oninput="updEditPrev()" style="color:var(--acc);" /></div>
+      <div class="fg"><label class="fl">Ganados</label>
+        <input class="mi-inp" id="cm-c-${cmCounter}" type="number" min="0" value="${cnt}" oninput="updEditPrev()" style="color:var(--acc);" /></div>
+      <button class="cm-del" onclick="this.closest('.cm-line').remove();updEditPrev()">✕</button>
+    </div>`).join('');
+
+  overlay.innerHTML = `
+    <div class="modal-box">
+      <div class="modal-title">
+        <span>Editar Sesión — ${s.sessionDate}</span>
+        <button class="modal-close" onclick="document.getElementById('edit-modal').remove()">✕</button>
+      </div>
+      <div class="fgrid" style="margin-bottom:14px;">
+        <div class="fg"><label class="fl">Fecha</label><input class="fi" id="e-date" type="date" value="${s.sessionDate}" /></div>
+        <div class="fg"><label class="fl">Buy-in ($)</label>
+          <select class="fs" id="e-bi" onchange="updEditPrev()">
+            ${BUYINS.map(b=>`<option value="${b}" ${b===s.buyin?'selected':''}>\$${b}</option>`).join('')}
+          </select>
+        </div>
+        <div class="fg"><label class="fl">Torneos jugados</label><input class="fi" id="e-trn" type="number" min="1" value="${s.tourneys}" oninput="updEditPrev()" /></div>
+        <div class="fg"><label class="fl">Rakeback (gratis)</label><input class="fi" id="e-rb" type="number" min="0" value="${s.freeRakeback||0}" oninput="updEditPrev()" /></div>
+      </div>
+      <div class="rb-row" style="margin-bottom:14px;">
+        <span class="rb-icon">📝</span>
+        <div class="fg" style="flex:1;"><label class="fl">Nota</label><input class="fi" id="e-note" type="text" value="${s.note||''}" /></div>
+      </div>
+      <p class="fl" style="margin-bottom:10px;">Torneos ganados por multiplicador</p>
+      <div class="mgrid" style="margin-bottom:10px;">
+        ${MULTS.map((m,i)=>`
+          <div class="mi-item">
+            <div class="mi-lbl">${MLBL[i]}<span>${m}× BI</span></div>
+            <input class="mi-inp" id="e-m${m}" type="number" min="0" value="${s['mult'+m+'x']||0}" oninput="updEditPrev()" />
+          </div>`).join('')}
+      </div>
+      <div class="custom-row" style="margin-bottom:14px;">
+        <span class="custom-lbl">✦ Multiplicadores personalizados</span>
+        <div id="ecm-list">${customLines}</div>
+        <button class="add-cm-btn" onclick="addEcmLine()">+ Agregar multiplicador</button>
+      </div>
+      <div class="preview" style="margin-bottom:14px;">
+        <div class="prev-item"><div class="prev-v c-m" id="ep-inv">$0.00</div><div class="prev-l">Invertido</div></div>
+        <div class="prev-item"><div class="prev-v c-m" id="ep-pri">$0.00</div><div class="prev-l">Premios</div></div>
+        <div class="prev-item"><div class="prev-v c-m" id="ep-net">$0.00</div><div class="prev-l">Neto</div></div>
+        <div class="prev-item"><div class="prev-v c-g" id="ep-rb">$0.00</div><div class="prev-l">Ahorro RB</div></div>
+        <div class="prev-item"><div class="prev-v c-m" id="ep-wr">—</div><div class="prev-l">Win rate</div></div>
+      </div>
+      <div class="brow">
+        <button class="btn btn-acc" style="flex:1;" onclick="saveEdit(${idx})">Guardar cambios</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('edit-modal').remove()">Cancelar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  setTimeout(updEditPrev, 50);
+}
+
+function addEcmLine(mult='', count=0) {
+  const id = ++cmCounter;
+  const div = document.createElement('div');
+  div.className = 'cm-line';
+  div.id = 'cm-'+id;
+  div.innerHTML = `
+    <div class="fg"><label class="fl">Multiplicador (×)</label>
+      <input class="fi" id="cm-m-${id}" type="number" min="1" placeholder="ej. 50" value="${mult||''}" oninput="updEditPrev()" style="color:var(--acc);" /></div>
+    <div class="fg"><label class="fl">Ganados</label>
+      <input class="mi-inp" id="cm-c-${id}" type="number" min="0" value="${count||0}" oninput="updEditPrev()" style="color:var(--acc);" /></div>
+    <button class="cm-del" onclick="this.closest('.cm-line').remove();updEditPrev()">✕</button>`;
+  document.getElementById('ecm-list').appendChild(div);
+}
+
+function updEditPrev() {
+  const bi  = parseFloat(document.getElementById('e-bi')?.value)||0;
+  const trn = parseInt(document.getElementById('e-trn')?.value)||0;
+  const rb  = Math.min(parseInt(document.getElementById('e-rb')?.value)||0, trn);
+  let wins=0, prizes=0;
+  MULTS.forEach(m=>{ const w=parseInt(document.getElementById('e-m'+m)?.value)||0; wins+=w; prizes+=w*bi*m; });
+  getCmLines().forEach(({m,cnt})=>{ wins+=cnt; prizes+=cnt*bi*m; });
+  const rbSaving=rb*bi, inv=(trn-rb)*bi, net=prizes-inv;
+  const setEl=(id,txt,cls)=>{ const el=document.getElementById(id); if(el){el.textContent=txt;if(cls)el.className=cls;} };
+  setEl('ep-inv',`$${inv.toFixed(2)}`);
+  setEl('ep-pri',`$${prizes.toFixed(2)}`);
+  setEl('ep-net',`${net>=0?'+':''}$${net.toFixed(2)}`,`prev-v ${net>0?'c-g':net<0?'c-r':'c-m'}`);
+  setEl('ep-rb',`+$${rbSaving.toFixed(2)}`);
+  setEl('ep-wr',trn>0?`${(wins/trn*100).toFixed(1)}%`:'—');
+}
+
+async function saveEdit(idx) {
+  const s = S.sessions[idx];
+  const date = document.getElementById('e-date').value;
+  const bi   = parseFloat(document.getElementById('e-bi').value);
+  const trn  = parseInt(document.getElementById('e-trn').value);
+  const rb   = Math.min(parseInt(document.getElementById('e-rb')?.value)||0, trn||0);
+  const note = document.getElementById('e-note').value||'';
+  if (!date)       { toast('Ingresa una fecha','err'); return; }
+  if (!trn||trn<1) { toast('Ingresa número de torneos','err'); return; }
+  let wins=0, prizes=0;
+  const mb={};
+  MULTS.forEach(m=>{ const w=parseInt(document.getElementById('e-m'+m)?.value)||0; mb[m]=w; wins+=w; prizes+=w*bi*m; });
+  const customMults = getCmLines();
+  customMults.forEach(({m,cnt})=>{ wins+=cnt; prizes+=cnt*bi*m; });
+  if (wins>trn) { toast('Wins no pueden superar torneos jugados','err'); return; }
+  const invested=(trn-rb)*bi, net=prizes-invested;
+  const data = {
+    sessionDate:date, buyin:bi, tourneys:trn, freeRakeback:rb, wins, prizes, invested,
+    netResult:net, mult2x:mb[2]||0, mult3x:mb[3]||0, mult5x:mb[5]||0,
+    mult10x:mb[10]||0, mult25x:mb[25]||0, mult120x:mb[120]||0,
+    customMults, note
+  };
+  try {
+    await sessionsCol.doc(s.id).update(data);
+    S.sessions[idx] = { ...s, ...data };
+    recalc();
+    await cfgRef.update({ currentBankroll: S.currentBankroll });
+    document.getElementById('edit-modal').remove();
+    renderAll();
+    toast('Sesión actualizada','ok');
+  } catch(e) { toast('Error: '+e.message,'err'); console.error(e); }
+}
+
 // ─── ANÁLISIS ─────────────────────────────────────────────────────────────────
 function renderAnalisis() {
   const el=document.getElementById('t-analisis');
@@ -793,9 +949,15 @@ function renderAnalisis() {
   const lS=ses.filter(x=>x.netResult<0).length;
   const mt={};
   MULTS.forEach(m=>{ mt[m]=ses.reduce((a,x)=>a+(x[`mult${m}x`]||0),0); });
-  // Aggregate custom multipliers - group by mult value
+  // Aggregate custom multipliers — supports both old single and new array format
   const customMults={};
-  ses.forEach(x=>{ if(x.multCustomMult>0 && x.multCustomCount>0){ const k=x.multCustomMult; customMults[k]=(customMults[k]||0)+x.multCustomCount; } });
+  ses.forEach(x=>{
+    if(Array.isArray(x.customMults)){
+      x.customMults.forEach(({m,cnt})=>{ customMults[m]=(customMults[m]||0)+cnt; });
+    } else if(x.multCustomMult>0 && x.multCustomCount>0){
+      customMults[x.multCustomMult]=(customMults[x.multCustomMult]||0)+x.multCustomCount;
+    }
+  });
   const allMtVals = [...Object.values(mt), ...Object.values(customMults)];
   const maxM=Math.max(1,...allMtVals);
   let tW2=0,tL2=0;
